@@ -1,6 +1,12 @@
 /*
 Naive Minimal Spanning Arborescence (spanning arborescence of minimum weight) algorithm using Chu–Liu/Edmonds' algorithm
 See on wikipedia: https://en.wikipedia.org/wiki/Edmonds'_algorithm
+
+WARNING: Work In Progress
+TODO:
+	- Implement efficient version
+	- Add basic multithreading
+	- Use general graph data structure
 */
 package msa
 
@@ -95,21 +101,21 @@ func (g *Graph) cyclesPresent() bool {
 	return false
 }
 
-// MDST
-func MDST(graph *Graph, root Node) (*Graph, error) {
+// Given a graph, calculate the MSA
+func (g *Graph) MSA(root Node) (*Graph, error) {
 	// First remove incoming to root
-	graph = graph.removeRootIncoming(root)
+	g = g.removeRootIncoming(root)
 
 	// Create a graph with only the lightest edges
-	graph = graph.removeHeavyEdges(root)
+	g = g.removeHeavyEdges(root)
 
 	// If there are no cycle, we found the right graph
-	if !graph.cyclesPresent() {
-		return graph, nil
+	if !g.cyclesPresent() {
+		return g, nil
 	}
 
 	// If there are
-	graph = graph.contract()
+	g = g.contract()
 
-	return graph, nil
+	return g, nil
 }

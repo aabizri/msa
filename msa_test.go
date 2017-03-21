@@ -65,8 +65,8 @@ func sameGraph(a, b *Graph) error {
 	return nil
 }
 
-func testMDST(p testPair) (*Graph, error) {
-	output, err := MDST(p.input, p.root)
+func testMSA(p testPair) (*Graph, error) {
+	output, err := p.input.MSA(p.root)
 	if err != nil {
 		return output, err
 	}
@@ -76,14 +76,14 @@ func testMDST(p testPair) (*Graph, error) {
 	return output, err
 }
 
-func Test_MDSTComplete(t *testing.T) {
+func Test_MSALong(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
 	for i, p := range pairs {
 
-		output, err := testMDST(p)
+		output, err := testMSA(p)
 		t.Logf("Pair %d:\n\tRoot:\t%v\n\tInput:\t%v\n\tValid:\t%v\n\tGot:\t%v", i, p.root, p.input, p.output, output)
 		if err != nil {
 			t.Error(err)
