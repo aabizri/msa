@@ -1,7 +1,8 @@
 /*
-Naive Minimal Directed Spanning Tree using Edmond's algorithm
+Naive Minimal Spanning Arborescence (spanning arborescence of minimum weight) algorithm using Chu–Liu/Edmonds' algorithm
+See on wikipedia: https://en.wikipedia.org/wiki/Edmonds'_algorithm
 */
-package mdst
+package msa
 
 type Node uint
 

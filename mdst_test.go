@@ -1,4 +1,4 @@
-package mdst
+package msa
 
 import (
 	"fmt"
