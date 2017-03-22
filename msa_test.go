@@ -1,92 +1,29 @@
 package msa
 
 import (
-	"fmt"
+	"github.com/gyuho/goraph"
+	"os"
 	"testing"
 )
 
-type testPair struct {
-	root   Node
-	input  *Graph
-	output *Graph
-}
+func TestGraph_MSA_13(t *testing.T) {
 
-var pairs []testPair = []testPair{
-	{
-		root: 3,
-		input: &Graph{
-			[]Node{0, 1, 2, 3},
-			[]Edge{
-				Edge{0, 1, 6},
-				Edge{3, 0, 1},
-				Edge{3, 2, 8},
-				Edge{2, 1, 10},
-				Edge{1, 2, 10},
-				Edge{1, 3, 12},
-			},
-		},
-		output: &Graph{
-			[]Node{0, 1, 2, 3},
-			[]Edge{
-				Edge{3, 0, 1},
-				Edge{3, 2, 8},
-				Edge{0, 1, 6},
-			},
-		},
-	},
-	{
-		root: 1,
-		input: &Graph{
-			[]Node{0, 1, 2, 3},
-			[]Edge{
-				Edge{0, 1, 6},
-				Edge{3, 0, 1},
-				Edge{3, 2, 8},
-				Edge{2, 1, 10},
-				Edge{1, 2, 10},
-				Edge{1, 3, 12},
-			},
-		},
-		output: &Graph{
-			[]Node{0, 1, 2, 3},
-			[]Edge{
-				Edge{1, 3, 12},
-				Edge{3, 0, 1},
-				Edge{3, 2, 8},
-			},
-		},
-	},
-}
-
-func sameGraph(a, b *Graph) error {
-	if len(a.E) != len(b.E) {
-		return fmt.Errorf("Not same amount of edges in both graphs: for a: %d, for b: %d", len(a.E), len(b.E))
-	}
-	return nil
-}
-
-func testMSA(p testPair) (*Graph, error) {
-	output, err := p.input.MSA(p.root)
+	// Get graph
+	f, err := os.Open("testdata/graph.json")
 	if err != nil {
-		return output, err
+		t.Error(err)
 	}
-	if err := sameGraph(output, p.output); err != nil {
-		err = fmt.Errorf("Correct graph for input is invalid:\n\tInput: %v\n\tAlgorithm output: %v\n\tValid output: %v\n\tDiff: %v\n", p.input, output, p.output, err)
+	defer f.Close()
+	g, err := goraph.NewGraphFromJSON(f, "graph_17")
+	if err != nil {
+		t.Error(err)
 	}
-	return output, err
-}
+	startgstr := g.String()
 
-func Test_MSALong(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-
-	for i, p := range pairs {
-
-		output, err := testMSA(p)
-		t.Logf("Pair %d:\n\tRoot:\t%v\n\tInput:\t%v\n\tValid:\t%v\n\tGot:\t%v", i, p.root, p.input, p.output, output)
-		if err != nil {
-			t.Error(err)
-		}
+	// Process graph
+	err = MSA(g, goraph.StringID("C"))
+	t.Logf("For MSA test with root %s:\n\tInput: \n%s\n\tValid: \n%s\n\tGot: \n%s\n", "C", startgstr, "NONE", g.String())
+	if err != nil {
+		t.Errorf("Error while calculating MSA (%v)", err)
 	}
 }
