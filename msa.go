@@ -114,7 +114,7 @@ func copyGraph(g goraph.Graph) (goraph.Graph, error) {
 		}
 	}
 	// Add every edge of original graph
-	oldEdges, err := getEdges(g)
+	oldEdges, err := GetEdges(g)
 	if err != nil {
 		return nil, fmt.Errorf("copyGraph: Error while retrieving edges: %v", err)
 	}
@@ -124,7 +124,7 @@ func copyGraph(g goraph.Graph) (goraph.Graph, error) {
 		fmt.Printf("\tadded %s", edge.String())
 	}
 
-	newEdges, _ := getEdges(tmpg)
+	newEdges, _ := GetEdges(tmpg)
 	fmt.Printf("copyGraph: Resulting graph:\n\tNodes: %v\n\tEdges: %v\n", tmpg.GetNodes(), newEdges)
 	return tmpg, nil
 }

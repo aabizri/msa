@@ -43,10 +43,10 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 
 	// Now process the edges
 	// Get the list of all edges
-	edges, err := getEdges(g)
+	edges, err := GetEdges(g)
 	fmt.Printf("All edges of g: %v\n", edges)
 	if err != nil {
-		return fmt.Errorf("contract: Error in call to getEdges: %v", err)
+		return fmt.Errorf("contract: Error in call to GetEdges: %v", err)
 	}
 
 	// Make a memory for pairs of old graph edges - new graph edges
@@ -84,7 +84,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 			return fmt.Errorf("contract: Error while doing the three case contraction process for %s: %v\n", e.String(), err)
 		}
 	}
-	newedges, _ := getEdges(ng)
+	newedges, _ := GetEdges(ng)
 	fmt.Printf("New contracted edges: \n\t%v\n", newedges)
 
 	// The fun begins, let's GO RECURSIVE WOOHOO
