@@ -151,23 +151,52 @@ func copyGraph(g goraph.Graph) (goraph.Graph, error) {
 
 // A graph is not feasible when there's more than one node with no incoming edge
 // NOT SURE
-func feasible(g goraph.Graph) bool {
+func feasibleGraphWithRoot(g goraph.Graph, root goraph.ID) (bool, error) {
 	nodes := g.GetNodes()
-	_ = nodes
-	// CONTINUE
-	return true
+	var (
+		orphans []goraph.ID = make([]goraph.ID, 0)
+	)
+	for id, _ := range nodes {
+		sources, err := g.GetSources(id)
+		if len(sources) == 0 {
+			orphans = append(orphans, id)
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+	// If it has no orphans, then it is feasible
+	if len(orphans) == 0 {
+		return true, nil
+	}
+	// If it has more than one orphan then it is not feasible
+	if len(orphans) > 1 {
+		return false, nil
+	}
+	// If it has one orphan and it's not root, then it is not feasible
+	if orphans[0].String() != root.String() {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // Given a graph, calculate the MSA
 // TODO: Add feasability
-func MSA(g goraph.Graph, root goraph.ID) error {
+func MSA(g goraph.Graph, root goraph.ID) (feasible bool, err error) {
+	// First let's check feasability
+	feasible, err = feasibleGraphWithRoot(g, root)
+	if !feasible {
+		return
+	}
 
 	// First remove every edge coming into root
 	//logger.Printf("Calling removeRootIncoming with parameters:\n\tRoot: %s\n\tGraph: \n%s\n...", root.String(), g.String())
 	logger.Print("MSA: Calling removeRootIncoming...")
-	err := removeRootIncoming(g, root)
+	err = removeRootIncoming(g, root)
 	if err != nil {
-		return fmt.Errorf("MSA: removeRootIncoming returned error: %s", err.Error())
+		err = fmt.Errorf("MSA: removeRootIncoming returned error: %s", err.Error())
+		return
 	}
 	logger.Print("MSA: removeRootIncoming DONE")
 	logger.Printf("MSA: current graph:\n%s", g.String())
@@ -175,14 +204,16 @@ func MSA(g goraph.Graph, root goraph.ID) error {
 	// Create a dummy graph
 	ng, err := copyGraph(g)
 	if err != nil {
-		return fmt.Errorf("MSA: error while copying graph: %v", err)
+		err = fmt.Errorf("MSA: error while copying graph: %v", err)
+		return
 	}
 
 	// Now remove all but the heaviest incoming edges on a dummy graph
 	logger.Print("MSA: Calling removeAllHeavyEdges")
 	err = removeAllHeavyEdges(ng, root)
 	if err != nil {
-		return fmt.Errorf("MSA: removeAllEdges returned error: %s", err.Error())
+		err = fmt.Errorf("MSA: removeAllEdges returned error: %s", err.Error())
+		return
 	}
 	logger.Print("MSA: removeAllHeavyEdges DONE")
 	logger.Printf("MSA: current graph:\n%s", g.String())
@@ -206,18 +237,19 @@ func MSA(g goraph.Graph, root goraph.ID) error {
 	// If there are no cycles, then we found the minimal spanning arborescence
 	if len(cycles) == 0 {
 		logger.Print("MSA: No cycles found, returning...")
-		return copyInPlace(ng, g)
+		err = copyInPlace(ng, g)
+		return
 	}
 
 	// If there are, let's contract them
 	logger.Print("MSA: Calling contract...")
 	err = contract(g, root, cycles)
-	return err
+	return
 }
 
 // MSAAllRoots calls MSA with every possible root to find the lightest one
 // TODO: Add feasability
-func MSAAllRoots(g goraph.Graph) (lightestGraph goraph.Graph, rootID goraph.ID, err error) {
+func MSAAllRoots(g goraph.Graph) (feasible bool, lightestGraph goraph.Graph, rootID goraph.ID, err error) {
 	// Retrieve list of all nodes
 	nodes := g.GetNodes()
 
@@ -226,18 +258,26 @@ func MSAAllRoots(g goraph.Graph) (lightestGraph goraph.Graph, rootID goraph.ID, 
 		lowestWeight float64
 	)
 	for id, _ := range nodes {
-		ng, err := copyGraph(g)
+		var ng goraph.Graph
+		ng, err = copyGraph(g)
 		if err != nil {
-			return nil, nil, err
+			return
 		}
-		err = MSA(ng, id)
+		var feasibleLocal bool
+		feasibleLocal, err = MSA(ng, id)
 		if err != nil {
-			return nil, nil, err
+			return
+		}
+		if !feasibleLocal {
+			break
+		} else {
+			feasible = true
 		}
 
-		totalWeight, err := TotalWeight(ng)
+		var totalWeight float64
+		totalWeight, err = TotalWeight(ng)
 		if err != nil {
-			return nil, nil, err
+			return
 		}
 		if totalWeight <= lowestWeight || lowestWeight == 0 {
 			lowestWeight = totalWeight

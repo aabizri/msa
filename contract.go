@@ -3,6 +3,7 @@ package msa
 import (
 	"fmt"
 	"github.com/gyuho/goraph"
+	"strconv"
 )
 
 // contract all cycles
@@ -19,7 +20,8 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 	ng := goraph.NewGraph()
 	ng.Init()
 	// Create the contracted node
-	vc := goraph.NewNode("vc")
+	vcName := "vc" + root.String() + strconv.FormatInt(int64(len(g.GetNodes())), 10)
+	vc := goraph.NewNode(vcName)
 
 	// Add the non-cycle nodes and the contracted node to the graph
 	// First add the contracted one
@@ -90,7 +92,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 	// The fun begins, let's GO RECURSIVE WOOHOO
 	// And enjoy the ride
 	logger.Printf("contract: Calling MSA on contracted graph...")
-	err = MSA(ng, root)
+	_, err = MSA(ng, root)
 	if err != nil {
 		return fmt.Errorf("contract: Call to MSA (recursion) failed with error: %v", err)
 	}
