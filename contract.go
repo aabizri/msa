@@ -3,7 +3,6 @@ package msa
 import (
 	"fmt"
 	"github.com/gyuho/goraph"
-	"log"
 )
 
 // contract all cycles
@@ -14,7 +13,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 	}
 	c := cycles[0]
 
-	log.Printf("contract: Contracting cycle of IDs: %v", c)
+	logger.Printf("contract: Contracting cycle of IDs: %v", c)
 
 	// Create a new graph
 	ng := goraph.NewGraph()
@@ -29,23 +28,23 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 		return fmt.Errorf("contract: couldn't add contracted node (id: %s) to graph", vc.String())
 	}
 	// Now add the non-cycle nodes
-	log.Printf("Adding non-cycle nodes...\n")
+	logger.Printf("Adding non-cycle nodes...\n")
 	for id, node := range g.GetNodes() {
 		// If a node isn't in the cycle, add it
 		if !idInCycle(c, id) {
 			ok := ng.AddNode(node)
-			log.Printf("\tadded node %s\n", node.ID().String())
+			logger.Printf("\tadded node %s\n", node.ID().String())
 			if !ok {
 				return fmt.Errorf("contract: couldn't add node (id: %s) to new graph", id.String())
 			}
 		}
 	}
-	log.Printf("added nodes, result: %v\n", ng.GetNodes())
+	logger.Printf("added nodes, result: %v\n", ng.GetNodes())
 
 	// Now process the edges
 	// Get the list of all edges
 	edges, err := GetEdges(g)
-	log.Printf("All edges of g: %v\n", edges)
+	logger.Printf("All edges of g: %v\n", edges)
 	if err != nil {
 		return fmt.Errorf("contract: Error in call to GetEdges: %v", err)
 	}
@@ -62,10 +61,10 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 		targetID := e.Target().ID()
 		sourceInCycle := idInCycle(c, e.Source())
 		targetInCycle := idInCycle(c, e.Target())
-		log.Printf("Processing edge from %s to %s...\n", sourceID.String(), targetID.String())
+		logger.Printf("Processing edge from %s to %s...\n", sourceID.String(), targetID.String())
 		switch {
 		case !sourceInCycle && targetInCycle:
-			log.Printf("CASE 1: For edge %s to %s, as %s isn't in cycle but %s is, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), sourceID.String(), vc.ID().String())
+			logger.Printf("CASE 1: For edge %s to %s, as %s isn't in cycle but %s is, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), sourceID.String(), vc.ID().String())
 			lowestWeight, err := findLightestIncomingEdgeWeight(g, e.Target().ID())
 			if err != nil {
 				return fmt.Errorf("contract: error in findLightestIncomingEdgeWeight: %v", err)
@@ -73,11 +72,11 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 			err = ng.AddEdge(e.Source().ID(), vc.ID(), e.Weight()-lowestWeight)
 			ep = append(ep, newEdgePair(e, goraph.NewEdge(e.Source(), vc, e.Weight()-lowestWeight)))
 		case sourceInCycle && !targetInCycle:
-			log.Printf("CASE 2: For edge %s to %s, as %s is in cycle but %s isn't, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), vc.ID().String(), targetID.String())
+			logger.Printf("CASE 2: For edge %s to %s, as %s is in cycle but %s isn't, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), vc.ID().String(), targetID.String())
 			err = ng.AddEdge(vc.ID(), e.Target().ID(), e.Weight())
 			ep = append(ep, newEdgePair(e, goraph.NewEdge(vc, e.Target(), e.Weight())))
 		case !sourceInCycle && !targetInCycle:
-			log.Printf("CASE 3: For edge %s to %s, as %s and %s aren't in the cycle, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), sourceID.String(), targetID.String())
+			logger.Printf("CASE 3: For edge %s to %s, as %s and %s aren't in the cycle, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), sourceID.String(), targetID.String())
 			err = ng.AddEdge(e.Source().ID(), e.Target().ID(), e.Weight())
 			ep = append(ep, newEdgePair(e, goraph.NewEdge(e.Source(), e.Target(), e.Weight())))
 		}
@@ -86,34 +85,34 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 		}
 	}
 	newedges, _ := GetEdges(ng)
-	log.Printf("contract: Created %d new edges", len(newedges))
+	logger.Printf("contract: Created %d new edges", len(newedges))
 
 	// The fun begins, let's GO RECURSIVE WOOHOO
 	// And enjoy the ride
-	log.Printf("contract: Calling MSA on contracted graph...")
+	logger.Printf("contract: Calling MSA on contracted graph...")
 	err = MSA(ng, root)
 	if err != nil {
 		return fmt.Errorf("contract: Call to MSA (recursion) failed with error: %v", err)
 	}
-	log.Printf("contract: MSA Call finished")
+	logger.Printf("contract: MSA Call finished")
 
 	// Now, delete the lightest edge going to the corresponding destination of (u,vc)
 	// First get that edge
-	log.Printf("contract: last step: now last part: find the edge corresponding to (u,vc)\n")
+	logger.Printf("contract: last step: now last part: find the edge corresponding to (u,vc)\n")
 	for _, pair := range ep {
 		// If it goes to vc
-		log.Printf("Trying pair \n\tOldest: %s\tNewest: %s", pair.oldest.String(), pair.newest.String())
+		logger.Printf("Trying pair \n\tOldest: %s\tNewest: %s", pair.oldest.String(), pair.newest.String())
 		if pair.newest.Target().ID().String() == vc.ID().String() {
-			log.Printf("contract: last step: Correct pair !")
-			log.Printf("contract: last step: Recovering lightest incoming edge source to that target...")
+			logger.Printf("contract: last step: Correct pair !")
+			logger.Printf("contract: last step: Recovering lightest incoming edge source to that target...")
 			// Get the lightest incoming edge source
 			source, err := findLightestIncomingEdgeSource(g, pair.oldest.Target().ID())
-			log.Printf("contract: last step: Lightest incoming edge source is %s\n", source.String())
+			logger.Printf("contract: last step: Lightest incoming edge source is %s\n", source.String())
 			if err != nil {
 				return fmt.Errorf("contract: error in lightestIncomingEdgeSource while recovering for target %s: %v", pair.oldest.Target().ID().String(), err)
 			}
 			// Remove it
-			log.Printf("contract: last step: Deleting edge from %s to %s\n", source.String(), pair.oldest.Target().ID().String())
+			logger.Printf("contract: last step: Deleting edge from %s to %s\n", source.String(), pair.oldest.Target().ID().String())
 			err = g.DeleteEdge(source, pair.oldest.Target().ID())
 			if err != nil {
 				return fmt.Errorf("contract: error while deleting lightest edge to %s, that is %s --> %s: %v", pair.oldest.Target().ID().String(), pair.oldest.Source().ID().String(), pair.newest.Target().ID().String(), err)

@@ -13,12 +13,19 @@ package msa
 import (
 	"fmt"
 	"github.com/gyuho/goraph"
+	"io/ioutil"
 	"log"
 )
 
-// removeRootIncoming removes all incoming edges to the root Node
+var logger *log.Logger
+
+func init() {
+	logger = log.New(ioutil.Discard, "", log.LstdFlags|log.Lshortfile)
+}
+
+// removeRootIncoming removes all incoming edges to root
 func removeRootIncoming(g goraph.Graph, root goraph.ID) error {
-	log.Printf("removeRootIncoming: called with root %s", root.String())
+	logger.Printf("removeRootIncoming: called with root %s", root.String())
 	// Get all sources
 	sources, err := g.GetSources(root)
 	if err != nil {
@@ -34,7 +41,7 @@ func removeRootIncoming(g goraph.Graph, root goraph.ID) error {
 		}
 	}
 
-	log.Printf("removeRootIncoming: removed %v", sources)
+	logger.Printf("removeRootIncoming: removed %v", sources)
 
 	// Return
 	return err
@@ -92,7 +99,7 @@ func removeAllHeavyEdges(g goraph.Graph, root goraph.ID) error {
 	for nodeID, _ := range nodes {
 		// Obviously don't remove the heaviest incoming edges coming to root , they are already removed
 		if nodeID.String() != root.String() {
-			log.Printf("removeAllHeavyEdges: Calling removeHeavyEdges for %s", nodeID.String())
+			logger.Printf("removeAllHeavyEdges: Calling removeHeavyEdges for %s", nodeID.String())
 			err := removeHeavyEdges(g, root, nodeID)
 			if err != nil {
 				return fmt.Errorf("removeAllHeavyEdges: error while removing the heaviest edges going to %s: %v", nodeID.String(), err)
@@ -107,10 +114,10 @@ func removeAllHeavyEdges(g goraph.Graph, root goraph.ID) error {
 func copyInPlace(source goraph.Graph, target goraph.Graph) error {
 	target.Init()
 	// Add each node
-	log.Println("copyInPlace: Adding nodes...")
+	logger.Println("copyInPlace: Adding nodes...")
 	for _, oldNode := range source.GetNodes() {
 		ok := target.AddNode(goraph.NewNode(oldNode.ID().String()))
-		log.Printf("\tadded %s\n", oldNode.String())
+		logger.Printf("\tadded %s\n", oldNode.String())
 		if ok != true {
 			return fmt.Errorf("copyInPlace: Error while adding node %s to new graph", oldNode.String())
 		}
@@ -121,15 +128,15 @@ func copyInPlace(source goraph.Graph, target goraph.Graph) error {
 	if err != nil {
 		return fmt.Errorf("copyGraph: Error while retrieving edges: %v", err)
 	}
-	log.Printf("copyGraph: Adding %d edges...\n", len(oldEdges))
+	logger.Printf("copyGraph: Adding %d edges...\n", len(oldEdges))
 	for _, edge := range oldEdges {
 		target.AddEdge(edge.Source().ID(), edge.Target().ID(), edge.Weight()) // ID is workaround for badly coded goraph library
-		log.Printf("\tadded %s", edge.String())
+		logger.Printf("\tadded %s", edge.String())
 	}
 
 	newEdges, _ := GetEdges(target)
-	log.Printf("copyGraph: created %d edges", len(newEdges))
-	//log.Printf("copyGraph: Resulting graph:\n\tNodes: %v\n\tEdges: %v\n", tmpg.GetNodes(), newEdges)
+	logger.Printf("copyGraph: created %d edges", len(newEdges))
+	//logger.Printf("copyGraph: Resulting graph:\n\tNodes: %v\n\tEdges: %v\n", tmpg.GetNodes(), newEdges)
 	return nil
 }
 
@@ -142,18 +149,28 @@ func copyGraph(g goraph.Graph) (goraph.Graph, error) {
 	return tmpg, err
 }
 
+// A graph is not feasible when there's more than one node with no incoming edge
+// NOT SURE
+func feasible(g goraph.Graph) bool {
+	nodes := g.GetNodes()
+	_ = nodes
+	// CONTINUE
+	return true
+}
+
 // Given a graph, calculate the MSA
+// TODO: Add feasability
 func MSA(g goraph.Graph, root goraph.ID) error {
 
 	// First remove every edge coming into root
-	//log.Printf("Calling removeRootIncoming with parameters:\n\tRoot: %s\n\tGraph: \n%s\n...", root.String(), g.String())
-	log.Print("MSA: Calling removeRootIncoming...")
+	//logger.Printf("Calling removeRootIncoming with parameters:\n\tRoot: %s\n\tGraph: \n%s\n...", root.String(), g.String())
+	logger.Print("MSA: Calling removeRootIncoming...")
 	err := removeRootIncoming(g, root)
 	if err != nil {
 		return fmt.Errorf("MSA: removeRootIncoming returned error: %s", err.Error())
 	}
-	log.Print("MSA: removeRootIncoming DONE")
-	log.Printf("MSA: current graph:\n%s", g.String())
+	logger.Print("MSA: removeRootIncoming DONE")
+	logger.Printf("MSA: current graph:\n%s", g.String())
 
 	// Create a dummy graph
 	ng, err := copyGraph(g)
@@ -162,19 +179,19 @@ func MSA(g goraph.Graph, root goraph.ID) error {
 	}
 
 	// Now remove all but the heaviest incoming edges on a dummy graph
-	log.Print("MSA: Calling removeAllHeavyEdges")
+	logger.Print("MSA: Calling removeAllHeavyEdges")
 	err = removeAllHeavyEdges(ng, root)
 	if err != nil {
 		return fmt.Errorf("MSA: removeAllEdges returned error: %s", err.Error())
 	}
-	log.Print("MSA: removeAllHeavyEdges DONE")
-	log.Printf("MSA: current graph:\n%s", g.String())
+	logger.Print("MSA: removeAllHeavyEdges DONE")
+	logger.Printf("MSA: current graph:\n%s", g.String())
 
 	// Now let's check if there are any cycles in that graph
 	// First let's retrieve all strongly connected components
-	log.Print("MSA: calling Tarjan")
+	logger.Print("MSA: calling Tarjan")
 	stronglyConnectedComponents := goraph.Tarjan(ng)
-	log.Print("MSA: tarjan returned")
+	logger.Print("MSA: tarjan returned")
 
 	// Now let's iterate through the list to check if there are any sublists longer than one, and add them to the list of cycles
 	cycles := make([][]goraph.ID, 0)
@@ -184,21 +201,22 @@ func MSA(g goraph.Graph, root goraph.ID) error {
 			cycles = append(cycles, l)
 		}
 	}
-	log.Printf("MSA: found %d cycles: %v", len(cycles), cycles)
+	logger.Printf("MSA: found %d cycles: %v", len(cycles), cycles)
 
 	// If there are no cycles, then we found the minimal spanning arborescence
 	if len(cycles) == 0 {
-		log.Print("MSA: No cycles found, returning...")
+		logger.Print("MSA: No cycles found, returning...")
 		return copyInPlace(ng, g)
 	}
 
 	// If there are, let's contract them
-	log.Print("MSA: Calling contract...")
+	logger.Print("MSA: Calling contract...")
 	err = contract(g, root, cycles)
 	return err
 }
 
 // MSAAllRoots calls MSA with every possible root to find the lightest one
+// TODO: Add feasability
 func MSAAllRoots(g goraph.Graph) (lightestGraph goraph.Graph, rootID goraph.ID, err error) {
 	// Retrieve list of all nodes
 	nodes := g.GetNodes()
