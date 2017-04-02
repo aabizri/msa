@@ -1,5 +1,5 @@
 /*
-Naive Minimal Spanning Arborescence (spanning arborescence of minimum weight) algorithm using Chu–Liu/Edmonds' algorithm
+Package msa implements a Naive Minimal Spanning Arborescence (spanning arborescence of minimum weight) solution in Go using Chu–Liu/Edmonds' algorithm
 See on wikipedia: https://en.wikipedia.org/wiki/Edmonds'_algorithm
 
 WARNING: Work In Progress
@@ -33,7 +33,7 @@ func removeRootIncoming(g goraph.Graph, root goraph.ID) error {
 	}
 
 	// Delete these edges
-	for sourceID, _ := range sources {
+	for sourceID := range sources {
 		// Delete the edge going from s to root
 		err = g.DeleteEdge(sourceID, root)
 		if err != nil {
@@ -52,15 +52,18 @@ func removeRootIncoming(g goraph.Graph, root goraph.ID) error {
 func removeHeavyEdges(g goraph.Graph, root goraph.ID, target goraph.ID) error {
 	// Get all sources
 	sources, err := g.GetSources(target)
-
+	if err != nil {
+		return fmt.Errorf("removeHavyEdges: error while retrieving sources of edges going to %s: %v", target.String(), err)
+	}
 	// Find the lightest one
 	var (
 		lightestEdgeSource goraph.ID
 		lightestWeight     float64
+		weight             float64 // Temporary variable
 	)
-	for sourceID, _ := range sources {
+	for sourceID := range sources {
 		// Retrieve the weight of that specific edge
-		weight, err := g.GetWeight(sourceID, target)
+		weight, err = g.GetWeight(sourceID, target)
 		if err != nil {
 			return fmt.Errorf("removeHeavyEdges: error while getting weight of edge going from %s to %s : %v", sourceID.String(), target.String(), err)
 		}
@@ -73,7 +76,7 @@ func removeHeavyEdges(g goraph.Graph, root goraph.ID, target goraph.ID) error {
 	}
 
 	// Delete all the edges going from source indicated in sources and terminating in target
-	for sourceID, _ := range sources {
+	for sourceID := range sources {
 		// Don't delete the edge incoming from the lightest edge source
 		if sourceID.String() != lightestEdgeSource.String() {
 			// Delete the edge going from sourceID to the target id
@@ -96,11 +99,11 @@ func removeAllHeavyEdges(g goraph.Graph, root goraph.ID) error {
 
 	// For every node in the nodes map, call removeHeavyEdges, removing all incoming edges except the lightest
 	var err error
-	for nodeID, _ := range nodes {
+	for nodeID := range nodes {
 		// Obviously don't remove the heaviest incoming edges coming to root , they are already removed
 		if nodeID.String() != root.String() {
 			logger.Printf("removeAllHeavyEdges: Calling removeHeavyEdges for %s", nodeID.String())
-			err := removeHeavyEdges(g, root, nodeID)
+			err = removeHeavyEdges(g, root, nodeID)
 			if err != nil {
 				return fmt.Errorf("removeAllHeavyEdges: error while removing the heaviest edges going to %s: %v", nodeID.String(), err)
 			}
@@ -118,7 +121,7 @@ func copyInPlace(source goraph.Graph, target goraph.Graph) error {
 	for _, oldNode := range source.GetNodes() {
 		ok := target.AddNode(goraph.NewNode(oldNode.ID().String()))
 		logger.Printf("\tadded %s\n", oldNode.String())
-		if ok != true {
+		if !ok {
 			return fmt.Errorf("copyInPlace: Error while adding node %s to new graph", oldNode.String())
 		}
 	}
@@ -126,15 +129,21 @@ func copyInPlace(source goraph.Graph, target goraph.Graph) error {
 	// Add every edge of original graph
 	oldEdges, err := GetEdges(source)
 	if err != nil {
-		return fmt.Errorf("copyGraph: Error while retrieving edges: %v", err)
+		return fmt.Errorf("copyInPlace: Error while retrieving edges: %v", err)
 	}
-	logger.Printf("copyGraph: Adding %d edges...\n", len(oldEdges))
+	logger.Printf("copyInPlace: Adding %d edges...\n", len(oldEdges))
 	for _, edge := range oldEdges {
-		target.AddEdge(edge.Source().ID(), edge.Target().ID(), edge.Weight()) // ID is workaround for badly coded goraph library
+		err = target.AddEdge(edge.Source().ID(), edge.Target().ID(), edge.Weight()) // ID is workaround for badly coded goraph library
+		if err != nil {
+			return err
+		}
 		logger.Printf("\tadded %s", edge.String())
 	}
 
-	newEdges, _ := GetEdges(target)
+	newEdges, err := GetEdges(target)
+	if err != nil {
+		return fmt.Errorf("copyInPlace: Error while retrieving edges: %v", err)
+	}
 	logger.Printf("copyGraph: created %d edges", len(newEdges))
 	//logger.Printf("copyGraph: Resulting graph:\n\tNodes: %v\n\tEdges: %v\n", tmpg.GetNodes(), newEdges)
 	return nil
@@ -153,10 +162,9 @@ func copyGraph(g goraph.Graph) (goraph.Graph, error) {
 // NOT SURE
 func feasibleGraphWithRoot(g goraph.Graph, root goraph.ID) (bool, error) {
 	nodes := g.GetNodes()
-	var (
-		orphans []goraph.ID = make([]goraph.ID, 0)
-	)
-	for id, _ := range nodes {
+	var orphans = make([]goraph.ID, 0)
+
+	for id := range nodes {
 		sources, err := g.GetSources(id)
 		if len(sources) == 0 {
 			orphans = append(orphans, id)
@@ -181,8 +189,7 @@ func feasibleGraphWithRoot(g goraph.Graph, root goraph.ID) (bool, error) {
 	return true, nil
 }
 
-// Given a graph, calculate the MSA
-// TODO: Add feasability
+// MSA calculate the Minimum Spanning Arborescene of a graph, modifying it and returning its feasability.
 func MSA(g goraph.Graph, root goraph.ID) (feasible bool, err error) {
 	// First let's check feasability
 	feasible, err = feasibleGraphWithRoot(g, root)
@@ -257,7 +264,7 @@ func MSAAllRoots(g goraph.Graph) (feasible bool, lightestGraph goraph.Graph, roo
 	var (
 		lowestWeight float64
 	)
-	for id, _ := range nodes {
+	for id := range nodes {
 		var ng goraph.Graph
 		ng, err = copyGraph(g)
 		if err != nil {

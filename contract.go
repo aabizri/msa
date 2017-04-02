@@ -20,7 +20,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 	ng := goraph.NewGraph()
 	ng.Init()
 	// Create the contracted node
-	vcName := "vc" + root.String() + strconv.FormatInt(int64(len(g.GetNodes())), 10)
+	vcName := "vc" + root.String() + strconv.Itoa(len(g.GetNodes()))
 	vc := goraph.NewNode(vcName)
 
 	// Add the non-cycle nodes and the contracted node to the graph
@@ -67,7 +67,8 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 		switch {
 		case !sourceInCycle && targetInCycle:
 			logger.Printf("CASE 1: For edge %s to %s, as %s isn't in cycle but %s is, add a new edge from %s to %s\n", sourceID.String(), targetID.String(), sourceID.String(), targetID.String(), sourceID.String(), vc.ID().String())
-			lowestWeight, err := findLightestIncomingEdgeWeight(g, e.Target().ID())
+			var lowestWeight float64
+			lowestWeight, err = findLightestIncomingEdgeWeight(g, e.Target().ID())
 			if err != nil {
 				return fmt.Errorf("contract: error in findLightestIncomingEdgeWeight: %v", err)
 			}
@@ -83,7 +84,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 			ep = append(ep, newEdgePair(e, goraph.NewEdge(e.Source(), e.Target(), e.Weight())))
 		}
 		if err != nil {
-			return fmt.Errorf("contract: Error while doing the three case contraction process for %s: %v\n", e.String(), err)
+			return fmt.Errorf("contract: Error while doing the three case contraction process for %s: %v", e.String(), err)
 		}
 	}
 	newedges, _ := GetEdges(ng)
@@ -101,6 +102,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 	// Now, delete the lightest edge going to the corresponding destination of (u,vc)
 	// First get that edge
 	logger.Printf("contract: last step: now last part: find the edge corresponding to (u,vc)\n")
+	var source goraph.ID
 	for _, pair := range ep {
 		// If it goes to vc
 		logger.Printf("Trying pair \n\tOldest: %s\tNewest: %s", pair.oldest.String(), pair.newest.String())
@@ -108,7 +110,7 @@ func contract(g goraph.Graph, root goraph.ID, cycles [][]goraph.ID) error {
 			logger.Printf("contract: last step: Correct pair !")
 			logger.Printf("contract: last step: Recovering lightest incoming edge source to that target...")
 			// Get the lightest incoming edge source
-			source, err := findLightestIncomingEdgeSource(g, pair.oldest.Target().ID())
+			source, err = findLightestIncomingEdgeSource(g, pair.oldest.Target().ID())
 			logger.Printf("contract: last step: Lightest incoming edge source is %s\n", source.String())
 			if err != nil {
 				return fmt.Errorf("contract: error in lightestIncomingEdgeSource while recovering for target %s: %v", pair.oldest.Target().ID().String(), err)
@@ -146,7 +148,7 @@ func findLightestIncomingEdgeWeight(g goraph.Graph, target goraph.ID) (float64, 
 	// Find the lightest one
 	var lightestWeight float64
 
-	for sourceID, _ := range sources {
+	for sourceID := range sources {
 		// Retrieve the weight of that specific edge
 		weight, err := g.GetWeight(sourceID, target)
 		if err != nil {
@@ -176,7 +178,7 @@ func findLightestIncomingEdgeSource(g goraph.Graph, target goraph.ID) (goraph.ID
 		lightestSource goraph.ID
 	)
 
-	for sourceID, _ := range sources {
+	for sourceID := range sources {
 		// Retrieve the weight of that specific edge
 		weight, err := g.GetWeight(sourceID, target)
 		if err != nil {

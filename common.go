@@ -2,7 +2,9 @@ package msa
 
 import "github.com/gyuho/goraph"
 
-// Get all edges
+// GetEdges returns all edges from the given Graph
+// It is not destructive
+// Exported because goraph.Graph doesn't provide it
 func GetEdges(g goraph.Graph) ([]goraph.Edge, error) {
 	edges := []goraph.Edge{}
 	foundEdge := make(map[string]struct{})
@@ -11,8 +13,9 @@ func GetEdges(g goraph.Graph) ([]goraph.Edge, error) {
 		if err != nil {
 			return nil, err
 		}
+		var weight float64
 		for id2, nd2 := range tm {
-			weight, err := g.GetWeight(id1, id2)
+			weight, err = g.GetWeight(id1, id2)
 			if err != nil {
 				return nil, err
 			}

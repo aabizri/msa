@@ -12,9 +12,14 @@ func TestGraph_MSA_17_D(t *testing.T) {
 	// Get graph
 	f, err := os.Open("testdata/graph.json")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err = f.Close(); err != nil {
+			panic("Couldn't close file descriptor!")
+		}
+	}()
+
 	g, err := goraph.NewGraphFromJSON(f, "graph_17")
 	if err != nil {
 		t.Error(err)
@@ -34,9 +39,15 @@ func TestGraph_MSA_17_C(t *testing.T) {
 	// Get graph
 	f, err := os.Open("testdata/graph.json")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err = f.Close(); err != nil {
+			panic("Couldn't close file descriptor!")
+		}
+	}()
+
+	// Create a corresponding graph
 	g, err := goraph.NewGraphFromJSON(f, "graph_17")
 	if err != nil {
 		t.Error(err)
@@ -56,9 +67,13 @@ func TestGraph_MSAAllRoots_17(t *testing.T) {
 	// Get graph
 	f, err := os.Open("testdata/graph.json")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err = f.Close(); err != nil {
+			panic("Couldn't close file descriptor!")
+		}
+	}()
 	g, err := goraph.NewGraphFromJSON(f, "graph_17")
 	if err != nil {
 		t.Error(err)
@@ -86,11 +101,15 @@ func TestGraph_MSAAllRoots_All(t *testing.T) {
 		// Get graph
 		f, err := os.Open("testdata/graph.json")
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
-		defer f.Close()
+		defer func() {
+			if err = f.Close(); err != nil {
+				panic("Couldn't close file descriptor!")
+			}
+		}()
 
-		graphNumberStr := strconv.FormatInt(int64(i), 10)
+		graphNumberStr := strconv.Itoa(i)
 		if i < 10 {
 			graphNumberStr = "0" + graphNumberStr
 		}
@@ -105,12 +124,13 @@ func TestGraph_MSAAllRoots_All(t *testing.T) {
 
 		// Process graph
 		feasible, graph, rootID, err := MSAAllRoots(g)
-		if graph != nil && rootID != nil {
-			//t.Logf("Got results:\n\t Graph\n%s\n\tRoot: %s\n", graph.String(), rootID.String())
-		}
+		/*if graph != nil && rootID != nil {
+			t.Logf("Got results:\n\t Graph\n%s\n\tRoot: %s\n", graph.String(), rootID.String())
+		}*/
 		if err != nil {
 			t.Errorf("Error while calculating MSAAllRoots: %v", err)
 		}
+		_ = graph
 		t.Logf("DONE, feasability: %v, root: %s", feasible, rootID)
 	}
 }
