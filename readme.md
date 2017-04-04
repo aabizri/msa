@@ -1,5 +1,7 @@
-# Minimal Spanning Arborescence (MSA) in Go
-Warning: Still in development
+# Minimal Spanning Arborescence (MSA) in Go [![Build Status](https://travis-ci.org/aabizri/msa.svg?branch=dev)](https://travis-ci.org/aabizri/msa)
+
+Warning: Still in development.
+Currently written in a very naïve way.
 
 ## Installing
 	`go get -u github.com/aabizri/msa`
